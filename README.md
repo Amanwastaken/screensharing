@@ -14,19 +14,30 @@ irm https://raw.githubusercontent.com/Amanwastaken/screensharing/main/AutoSS.ps1
 
 Choose **[1]** to run all checks. It saves an HTML report with a suspicion score and reasons. The menu also launches extra tools:
 
-| Key | Tool | How it's trusted |
-|---|---|---|
-| S | Services check (lilith) | Reviewed copy in this repo |
-| M | Yarp mod analyzer | Reviewed copy in this repo |
-| H | Habibi mod analyzer | Reviewed copy in this repo |
-| J | P1AE javaw memory scanner v1.12 | Pinned SHA-256 (open source, unsigned) |
-| P | Spokwn Prefetch Parser v1.5.5 | Pinned SHA-256 (signed by espouken) |
-| A | Spokwn BAM Parser v1.2.9 | Pinned SHA-256 (signed by espouken) |
-| W / L | NirSoft WinPrefetchView / LastActivityView | Must be validly signed by Nir Sofer |
-| K | System Informer 4.0.26241.138 (portable) | Pinned SHA-256 + must be signed by Winsider |
-| C | Cleanup | Removes downloaded tools from `%ProgramData%\TonytheboiAutoSS` |
+| Key | Tool | Hosted | How it's trusted |
+|---|---|---|---|
+| S | Services check (lilith) | This repo | Reviewed copy |
+| M | Yarp mod analyzer | This repo | Reviewed copy |
+| H | Habibi mod analyzer | This repo | Reviewed copy |
+| D | Doomsday client finder (lilith) | This repo | Reviewed copy |
+| E | ShellSearch, suspicious PowerShell in event logs (lilith) | This repo | Reviewed copy |
+| T | Scheduled tasks, unsigned + suspicious (lilith) | This repo | Reviewed copy |
+| F | Non-Microsoft files → `C:\Screenshare\paths.txt` (lilith) | This repo | Reviewed copy |
+| N | Service Enabler (lilith). **Changes services**, asks for YES | This repo | Reviewed copy |
+| K | System Informer 4.0.26241.138 (portable, MIT) | This repo (`tools/`) | Pinned SHA-256 + must be signed by Winsider |
+| P | Spokwn Prefetch Parser v1.5.5 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
+| A | Spokwn BAM Parser v1.2.9 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
+| O | Spokwn Paths Parser v1.2 (use after F) | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
+| V | Spokwn PcaSvc Executed v0.8.7 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
+| Y | Spokwn ActivitiesCache Parser v0.6.5 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
+| J | P1AE javaw memory scanner v1.12 | p1aegg's GitHub | Pinned SHA-256 (open source, unsigned) |
+| W / L | NirSoft WinPrefetchView / LastActivityView | nirsoft.net | Must be validly signed by Nir Sofer |
+| C | Cleanup | | Removes downloaded tools from `%ProgramData%\TonytheboiAutoSS` |
 
-Downloaded programs are refused and deleted if the fingerprint or signature doesn't match.
+Downloaded programs are refused and deleted if the fingerprint or signature doesn't match, so a file swapped upstream can't run.
+Spokwn's and P1AE's programs have no licence that allows re-hosting, so they are fetched from the author at a locked version instead of being copied here.
+
+Not included on purpose: Lily's Collector (adds a Defender exclusion), IHateScreensharing (rewrites system settings), Spokwn-Collect (unpinned bulk downloads), and Spokwn's unsigned tools (JournalTrace, BamDeletedKeys, KernelLiveDumpTool, espouken.exe).
 
 ## Individual scripts
 
@@ -65,6 +76,11 @@ iex ([Text.Encoding]::UTF8.GetString((iwr URL -UseBasicParsing).RawContentStream
 |---|---|---|---|
 | AutoSS.ps1 | [tonytheboi](https://github.com/tonytheboi/Tonytheboi-Auto-SS-Tool) | Writes the HTML report; menu tools download to `%ProgramData%\TonytheboiAutoSS` | Checks: none. Menu tools: downloads listed above |
 | YarpsModAnalyzer.ps1 | [YarpLetapStan](https://github.com/YarpLetapStan/PowershellScripts) | Nothing (read-only) | Sends mod hashes/names to Modrinth and megabase.vercel.app |
+| DoomsdayFinder.ps1 | [praiselily](https://github.com/praiselily/lilith-ps) (credits Zedoon) | Nothing (read-only) | None |
+| ShellSearch.ps1 | [praiselily](https://github.com/praiselily/lilith-ps) | Writes a .txt to `%TEMP%`, opens Notepad | None |
+| SchedulesV2.ps1 | [praiselily](https://github.com/praiselily/lilith-ps) (based on N0LW) | Nothing (read-only) | None |
+| CommonDirectories.ps1 | [praiselily](https://github.com/praiselily/lilith-ps) | Writes `C:\Screenshare\paths.txt` | None |
+| Service-Enabler.ps1 | [praiselily](https://github.com/praiselily/lilith-ps) | **Sets chosen services to Automatic and starts them** | None |
 | Services.ps1 | [praiselily](https://github.com/praiselily/lilith-ps) | Nothing (read-only) | None |
 | RedLotusPrefetchIntegrityAnalyzer.ps1 | [bacanoicua / Red Lotus](https://github.com/bacanoicua/Screenshare) | Nothing (read-only) | None |
 | bamparser.ps1 | [spokwn](https://github.com/spokwn/powershells) | Writes `%TEMP%\BAMKeyEntries.html` | Report loads a Google font |
@@ -78,7 +94,8 @@ iex ([Text.Encoding]::UTF8.GetString((iwr URL -UseBasicParsing).RawContentStream
 |---|---|
 | AutoSS.ps1 | tonytheboi/Tonytheboi-Auto-SS-Tool@cc60349 (modified: repo-hosted scripts, pinned downloads, added [H]) |
 | YarpsModAnalyzer.ps1 | YarpLetapStan/PowershellScripts@66fd1d7 (YarpsModAnalyzer6.0.ps1) |
-| Services.ps1 | praiselily/lilith-ps@ecf7280 |
+| Services.ps1, DoomsdayFinder.ps1, ShellSearch.ps1, SchedulesV2.ps1, CommonDirectories.ps1, Service-Enabler.ps1 | praiselily/lilith-ps@ecf7280 |
+| tools/systeminformer-4.0.26241.138-bin.zip | winsiderss/systeminformer release v4.0.26241.138 (MIT) |
 | RedLotusPrefetchIntegrityAnalyzer.ps1 | bacanoicua/Screenshare@e212b72 |
 | bamparser.ps1, Streams.ps1 | spokwn/powershells@544b5f4 |
 | HabibiModAnalyzer.ps1 | HadronCollision/PowershellScripts@e0175a5 |

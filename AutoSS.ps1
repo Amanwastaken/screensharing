@@ -25,6 +25,11 @@ $Script:Url = @{
     Services       = "$Script:Repo/Services.ps1"
     ModAnalyzer    = "$Script:Repo/YarpsModAnalyzer.ps1"
     HabibiAnalyzer = "$Script:Repo/HabibiModAnalyzer.ps1"
+    Doomsday       = "$Script:Repo/DoomsdayFinder.ps1"
+    ShellSearch    = "$Script:Repo/ShellSearch.ps1"
+    Schedules      = "$Script:Repo/SchedulesV2.ps1"
+    CommonDirs     = "$Script:Repo/CommonDirectories.ps1"
+    ServiceEnabler = "$Script:Repo/Service-Enabler.ps1"
     # NirSoft does not offer versioned downloads, so these are checked by publisher signature instead
     WinPrefetchView  = 'https://www.nirsoft.net/utils/winprefetchview-x64.zip'
     LastActivityView = 'https://www.nirsoft.net/utils/lastactivityview.zip'
@@ -36,7 +41,14 @@ $Script:Pinned = @{
                         Sha256 = '3A4ABD0FA4C72BB3E2FD9FBAFC6874F98DB516593CD7D4DB20F8BAAC1268B963' }
     BamParser = @{ Url    = 'https://github.com/spokwn/BAM-parser/releases/download/v1.2.9/BAMParser.exe'
                    Sha256 = '2E7C984E220A8EE2CAF781B945D1D58C5E7571F8F2E071517255A90E16D2398C' }
-    SystemInformer = @{ Url    = 'https://github.com/winsiderss/systeminformer/releases/download/v4.0.26241.138/systeminformer-4.0.26241.138-bin.zip'
+    PathsParser = @{ Url    = 'https://github.com/spokwn/PathsParser/releases/download/v1.2/PathsParser.exe'
+                     Sha256 = '2EA132306A724CD5980E635C3B4A372CF066BB1B11ED70056950A4CF058FDF79' }
+    PcaSvc = @{ Url    = 'https://github.com/spokwn/pcasvc-executed/releases/download/v0.8.7/PcaSvcExecuted.exe'
+                Sha256 = '09BFE7C5A26EA3E377A04FFF2DF2FDC10F04EAF00C05CD579A5DE9A080621DFC' }
+    ActivitiesCache = @{ Url    = 'https://github.com/spokwn/ActivitiesCache-execution/releases/download/v0.6.5/ActivitiesCacheParser.exe'
+                         Sha256 = '293CE14B67638EBEBA8A88D475D75BF947D6EFFDC0E5B30A64691D03132CA5DD' }
+    # MIT licensed, so a copy is hosted in this repo
+    SystemInformer = @{ Url    = "$Script:Repo/tools/systeminformer-4.0.26241.138-bin.zip"
                         Sha256 = '3E12CC4F1FFA1CC34AB9202A9DFE410724CB8B68AAF2EFA43C01D3705B27219E' }
 }
 
@@ -1006,6 +1018,12 @@ function Get-ZipTool([string]$Url, [string]$Name, [string]$Signer) {
     return $exe
 }
 
+# Console tools close their window when they finish, so run them inside cmd /k to keep the output on screen
+function Start-ConsoleTool([string]$Path) {
+    $wd = 'C:\Screenshare'; if (-not (Test-Path $wd)) { $wd = Split-Path $Path -Parent }
+    Start-Process cmd.exe -Verb RunAs -WorkingDirectory $wd -ArgumentList '/k', "`"$Path`""
+}
+
 function Start-RemoteScript([string]$Url, [string]$Title) {
     Write-Host "Opening $Title in a new window..." -ForegroundColor DarkGray
     $cmd = "`$host.UI.RawUI.WindowTitle = '$Title'; Invoke-Expression (Invoke-RestMethod '$Url')"
@@ -1017,6 +1035,17 @@ function Invoke-ExternalTool([string]$key) {
         'S' { Start-RemoteScript $Script:Url.Services 'Services check (lilith)' }
         'M' { Start-RemoteScript $Script:Url.ModAnalyzer 'Yarp Mod Analyzer' }
         'H' { Start-RemoteScript $Script:Url.HabibiAnalyzer 'Habibi Mod Analyzer' }
+        'D' { Start-RemoteScript $Script:Url.Doomsday 'Doomsday Finder (lilith)' }
+        'E' { Start-RemoteScript $Script:Url.ShellSearch 'ShellSearch - PowerShell event logs (lilith)' }
+        'T' { Start-RemoteScript $Script:Url.Schedules 'Scheduled tasks, unsigned + suspicious (lilith)' }
+        'F' { Start-RemoteScript $Script:Url.CommonDirs 'Non-Microsoft files to C:\Screenshare\paths.txt (lilith)' }
+        'N' {
+            Write-Host 'This CHANGES services (sets them to Automatic and starts them). Run it only after the scan is saved.' -ForegroundColor Yellow
+            if ((Read-Host '  Type YES to continue') -eq 'YES') { Start-RemoteScript $Script:Url.ServiceEnabler 'Service Enabler (lilith)' }
+        }
+        'O' { $p = Get-PinnedTool 'PathsParser'; if ($p) { Start-ConsoleTool $p } }
+        'V' { $p = Get-PinnedTool 'PcaSvc'; if ($p) { Start-ConsoleTool $p } }
+        'Y' { $p = Get-PinnedTool 'ActivitiesCache'; if ($p) { Start-ConsoleTool $p } }
         'J' {
             if (-not (Get-Process javaw)) { Write-Host 'Minecraft (javaw) is not running - the memory scan needs the game open.' -ForegroundColor Yellow }
             $p = Get-PinnedTool 'P1AE'; if ($p) { Start-Process $p -Verb RunAs }
@@ -1080,12 +1109,20 @@ function Show-Menu {
     Write-Host '  [S]  Services script (lilith)'
     Write-Host '  [M]  Yarp mod analyzer'
     Write-Host '  [H]  Habibi mod analyzer'
+    Write-Host '  [D]  Doomsday client finder (lilith)'
+    Write-Host '  [E]  ShellSearch - suspicious PowerShell in event logs (lilith)'
+    Write-Host '  [T]  Scheduled tasks, unsigned + suspicious (lilith)'
+    Write-Host '  [F]  List non-Microsoft files to C:\Screenshare\paths.txt (lilith) - feed into [O]'
+    Write-Host '  [O]  Paths Parser (spokwn) - signatures/YARA on paths.txt'
+    Write-Host '  [V]  PcaSvc executed (spokwn)'
+    Write-Host '  [Y]  ActivitiesCache parser (spokwn)'
     Write-Host '  [J]  P1AE javaw memory scanner (game must be open)'
     Write-Host '  [P]  Prefetch Parser (spokwn) - prefetch + signatures + YARA'
     Write-Host '  [A]  BAM parser (spokwn)'
     Write-Host '  [W]  WinPrefetchView (NirSoft)'
     Write-Host '  [L]  LastActivityView (NirSoft) - timeline of everything run/opened'
     Write-Host '  [K]  System Informer, official signed build (kernel dump - experienced only)'
+    Write-Host '  [N]  Service Enabler - CHANGES services, run after the scan (lilith)'
     Write-Host '  [C]  Cleanup (remove downloaded tools + Defender exclusion)'
     Write-Host '  [Q]  Quit'
     Write-Host ''
@@ -1113,7 +1150,7 @@ while ($true) {
     } elseif ($Script:Checks.Contains($choice)) {
         & $Script:Checks[$choice].Fn
         Save-Report
-    } elseif ('S', 'M', 'H', 'J', 'P', 'A', 'W', 'L', 'K', 'C' -contains $choice) {
+    } elseif ('S', 'M', 'H', 'D', 'E', 'T', 'F', 'N', 'O', 'V', 'Y', 'J', 'P', 'A', 'W', 'L', 'K', 'C' -contains $choice) {
         Invoke-ExternalTool $choice
     } else {
         Write-Host 'Unknown option.' -ForegroundColor Yellow
