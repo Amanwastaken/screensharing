@@ -206,6 +206,12 @@ function Add-Section([string]$Title) {
 # Matched against "LEVEL|text"; first match wins. Unmatched: FLAG 0.30, WARN 0.03.
 # Tune these to your server - they are judgement calls, not measured odds.
 $Script:Weights = @(
+    ,@('Doomsday client found', 0.75)
+    ,@('Cheat mod detected by Yarp', 0.60)
+    ,@('Cheat mod detected by Habibi', 0.45)
+    ,@('tampered or disallowed mods', 0.15)
+    ,@('flagged prefetch files', 0.10)
+    ,@('ShellSearch found', 0.05)
     ,@('theseus\.jar but contains extra', 0.85)
     ,@('Unknown -javaagent', 0.65)
     ,@('Native agent loaded', 0.55)
@@ -280,7 +286,7 @@ function Get-Verdict {
     }
     $top = @($all | Where-Object { $_.Weight -gt 0 } | Sort-Object Weight -Descending | Select-Object -First 8)
     $cleanup = @($all | Where-Object { $_.Weight -ge 0.25 -and $_.Text -match '(?i)cleared|deleted|recreated|empty|disabled|not active|stopped' })
-    $cheat   = @($all | Where-Object { $_.Weight -ge 0.25 -and $_.Text -match '(?i)javaagent|agent|DLL|JNativeHook|Hidden files|theseus|unusual place|outside game' })
+    $cheat   = @($all | Where-Object { $_.Weight -ge 0.25 -and $_.Text -match '(?i)javaagent|agent|DLL|JNativeHook|Hidden files|theseus|unusual place|outside game|Cheat mod|Doomsday' })
     [pscustomobject]@{
         Score = $score; Band = $band; Top = $top
         Flags = $flagItems.Count; Warns = $warnItems.Count
@@ -302,7 +308,7 @@ function Write-Summary($v) {
         foreach ($t in $v.Top) { Write-Host ("   [{0}] {1}  ({2:P0})" -f $t.Level, $t.Text, $t.Weight) -ForegroundColor Gray }
     }
     if ($v.SecureBootOff) { Write-Host '  RULE: Secure Boot is OFF - a ban under your server rules regardless of the score.' -ForegroundColor Red }
-    Write-Host '  Not included: mod analyzers [M]/[H], kernel dump [K]. Run those and weigh them yourself.' -ForegroundColor DarkGray
+    Write-Host '  Not included: kernel dump [K] and the Spokwn GUI tools. Option [1] also skips the mod analyzers - [0] runs them.' -ForegroundColor DarkGray
     if (-not $v.Live) { Write-Host '  Minecraft was not running, so live process checks were skipped.' -ForegroundColor DarkGray }
     Write-Host '==================================================' -ForegroundColor Cyan
 }
@@ -1024,6 +1030,106 @@ function Start-ConsoleTool([string]$Path) {
     Start-Process cmd.exe -Verb RunAs -WorkingDirectory $wd -ArgumentList '/k', "`"$Path`""
 }
 
+# =====================================================================
+#  FULL SCAN - runs the extra scripts hidden, captures their output into the report
+# =====================================================================
+
+# Loaded before each extra script so it runs without stopping for input:
+# prompts get automatic answers, grid windows and Notepad are turned into text output.
+$Script:Shim = @'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$ProgressPreference = 'SilentlyContinue'
+function Clear-Host {}
+function Start-Sleep {}
+function Read-Host {
+    param([Parameter(Position = 0)]$Prompt)
+    $p = "$Prompt"
+    if ($p -match 'Press Enter|y/N') { return '' }
+    return $env:SS_MODS
+}
+function Out-GridView {
+    param([switch]$PassThru, [string]$Title)
+    $input | Format-List | Out-String -Width 400 | Write-Host
+}
+function Start-Process {
+    param([Parameter(Position = 0)]$FilePath, [Parameter(Position = 1)]$ArgumentList)
+    foreach ($a in @($ArgumentList)) {
+        if ($a -and (Test-Path -LiteralPath $a -PathType Leaf)) { Write-Host (Get-Content -LiteralPath $a -Raw) }
+    }
+}
+'@
+
+function Invoke-CapturedScript([string]$Title, [string]$Url, [int]$TimeoutSec = 600) {
+    $dir = Join-Path $env:TEMP 'AutoSS_full'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $id     = [guid]::NewGuid().ToString('N').Substring(0, 8)
+    $runner = Join-Path $dir "run_$id.ps1"
+    $out    = Join-Path $dir "out_$id.txt"
+    $err    = Join-Path $dir "err_$id.txt"
+    $in     = Join-Path $dir 'empty.txt'
+    [IO.File]::WriteAllText($in, '')
+    $body = $Script:Shim + "`nSet-Location -LiteralPath `$env:USERPROFILE`nInvoke-Expression (Invoke-RestMethod '$Url' -UseBasicParsing)`n"
+    [IO.File]::WriteAllText($runner, $body, (New-Object Text.UTF8Encoding $true))
+
+    Write-Host "Running $Title (hidden, up to $([int]($TimeoutSec / 60)) min)..." -ForegroundColor DarkGray
+    $timedOut = $false
+    $p = Start-Process powershell.exe -PassThru -WindowStyle Hidden `
+        -ArgumentList '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', "`"$runner`"" `
+        -RedirectStandardInput $in -RedirectStandardOutput $out -RedirectStandardError $err
+    if (-not $p) { return [pscustomobject]@{ Text = ''; TimedOut = $false } }
+    if (-not $p.WaitForExit($TimeoutSec * 1000)) { try { $p.Kill() } catch {}; $timedOut = $true }
+    Start-Sleep -Milliseconds 300
+
+    $text = ''
+    if (Test-Path $out) { $text = [IO.File]::ReadAllText($out, [Text.Encoding]::UTF8) }
+    # drop colour codes and box/braille art so the report stays readable
+    $text = $text -replace "\x1b\[[0-9;]*[A-Za-z]", '' -replace '[─-▟⠀-⣿]', ''
+    $lines = @($text -split "\r?\n" | ForEach-Object { $_.TrimEnd() } | Where-Object { $_.Trim() })
+    if ($lines.Count -gt 400) { $lines = @($lines[0..399]) + "... ($($lines.Count - 400) more lines cut)" }
+    Remove-Item -LiteralPath $runner, $out, $err -Force -ErrorAction SilentlyContinue
+    return [pscustomobject]@{ Text = ($lines -join "`n"); TimedOut = $timedOut }
+}
+
+function Invoke-FullScan {
+    Write-Host ''
+    $mods = Read-Host '  Mods folder for the mod analyzers (press Enter to find it automatically)'
+    $env:SS_MODS = "$mods".Trim().Trim('"')
+
+    foreach ($k in $Script:Checks.Keys) { & $Script:Checks[$k].Fn }
+
+    $extras = @(
+        @{ Title = 'Mod analyzer (Yarp)';   Url = $Script:Url.ModAnalyzer
+           Flag = 'CHEAT MOD DETECTED';     FlagText = 'Cheat mod detected by Yarp mod analyzer'
+           Warn = 'TAMPERED MOD|DISALLOWED MOD DETECTED'; WarnText = 'Yarp mod analyzer found tampered or disallowed mods' }
+        @{ Title = 'Mod analyzer (Habibi)'; Url = $Script:Url.HabibiAnalyzer
+           Flag = '\{ Cheat Mods \}';       FlagText = 'Cheat mod detected by Habibi mod analyzer' }
+        @{ Title = 'Doomsday client finder'; Url = $Script:Url.Doomsday
+           Flag = 'DOOMSDAY CLIENT FOUND';  FlagText = 'Doomsday client found' }
+        @{ Title = 'Prefetch integrity (Red Lotus)'; Url = "$Script:Repo/RedLotusPrefetchIntegrityAnalyzer.ps1"
+           Warn = 'Suspicius PFs';          WarnText = 'Prefetch integrity analyzer flagged prefetch files' }
+        @{ Title = 'PowerShell event logs (ShellSearch)'; Url = $Script:Url.ShellSearch
+           Warn = 'unique hits';            WarnText = 'ShellSearch found suspicious commands in PowerShell event logs' }
+        @{ Title = 'Scheduled tasks, unsigned + suspicious'; Url = $Script:Url.Schedules
+           Warn = 'Found \d+ suspicious';   WarnText = 'Unsigned or suspicious scheduled tasks to review' }
+    )
+    foreach ($x in $extras) {
+        Add-Section "Extra: $($x.Title)"
+        $r = Invoke-CapturedScript $x.Title $x.Url
+        if ($r.TimedOut) { Add-Finding 'WARN' "$($x.Title) did not finish in time - run it from the menu" $r.Text; continue }
+        if (-not $r.Text) { Add-Finding 'INFO' "$($x.Title) gave no output - run it from the menu to see why"; continue }
+        if ($x.Flag -and $r.Text -match $x.Flag) { Add-Finding 'FLAG' $x.FlagText $r.Text }
+        elseif ($x.Warn -and $r.Text -match $x.Warn) { Add-Finding 'WARN' $x.WarnText $r.Text }
+        else { Add-Finding 'OK' "$($x.Title): nothing flagged" $r.Text }
+    }
+    Save-Report
+
+    Write-Host ''
+    $a = Read-Host '  Open Spokwn Prefetch Parser and BAM Parser for a manual look? [Y/n]'
+    if ($a -notmatch '^(n|no)$') {
+        foreach ($k in 'PrefetchParser', 'BamParser') { $p = Get-PinnedTool $k; if ($p) { Start-Process $p -Verb RunAs } }
+    }
+}
+
 function Start-RemoteScript([string]$Url, [string]$Title) {
     Write-Host "Opening $Title in a new window..." -ForegroundColor DarkGray
     $cmd = "`$host.UI.RawUI.WindowTitle = '$Title'; Invoke-Expression (Invoke-RestMethod '$Url')"
@@ -1098,7 +1204,8 @@ function Show-Menu {
     Write-Host "  Welcome to Tonytheboi Auto Screenshare Tool" -ForegroundColor Cyan
     Write-Host "  v$Script:Version" -ForegroundColor DarkGray
     Write-Host '  -------------------------------------------'
-    Write-Host '  [1]  Run ALL checks + report (recommended)' -ForegroundColor Green
+    Write-Host '  [0]  FULL SCAN - all checks + mod analyzers + extra scripts, one report' -ForegroundColor Green
+    Write-Host '  [1]  Quick scan - built-in checks only + report'
     foreach ($k in $Script:Checks.Keys) { Write-Host ('  [{0}] {1}' -f $k.PadRight(3), $Script:Checks[$k].Name) }
     Write-Host ''
     Write-Host '  External tools' -ForegroundColor Cyan
@@ -1137,7 +1244,9 @@ while ($true) {
     $choice = (Read-Host '  Choose').Trim().ToUpper()
     if ($choice -eq 'Q') { break }
     $Script:Report.Clear()
-    if ($choice -eq '1') {
+    if ($choice -eq '0') {
+        Invoke-FullScan
+    } elseif ($choice -eq '1') {
         foreach ($k in $Script:Checks.Keys) { & $Script:Checks[$k].Fn }
         Save-Report
         Write-Host ''

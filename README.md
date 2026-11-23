@@ -12,7 +12,15 @@ Open **PowerShell as Administrator** (right-click Start → Terminal (Admin)) an
 irm https://raw.githubusercontent.com/Amanwastaken/screensharing/main/AutoSS.ps1 | iex
 ```
 
-Choose **[1]** to run all checks. It saves an HTML report with a suspicion score and reasons. The menu also launches extra tools:
+Choose **[0] FULL SCAN** for everything in one go:
+
+1. Asks once for the mods folder (Enter = find it automatically)
+2. Runs all 12 built-in checks
+3. Runs the extra scripts hidden in the background (Yarp + Habibi mod analyzers, Doomsday finder, Red Lotus prefetch integrity, ShellSearch, scheduled tasks), answering their prompts automatically and putting their full output into the report
+4. Saves one HTML report to the Desktop with a suspicion score and the top reasons (cheat mods and Doomsday hits count heavily)
+5. Offers to open Spokwn's Prefetch Parser and BAM Parser for a manual look
+
+**[1] Quick scan** runs only the built-in checks. Every tool can also be run on its own from the menu:
 
 | Key | Tool | Hosted | How it's trusted |
 |---|---|---|---|
