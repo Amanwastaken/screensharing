@@ -17,9 +17,7 @@ $Script:ToolDir   = Join-Path $env:ProgramData 'TonytheboiAutoSS'
 $Script:RecentHrs = 24          # "recent" window for most checks
 
 # External tools.
-# Scripts come from this repo (reviewed copies). Programs are pinned to one exact release and
-# checked against a SHA-256 fingerprint before running, so a changed or swapped file is refused.
-# To update a tool: change the URL and the hash together, after re-checking the new version.
+# Scripts only: every tool is a reviewed PowerShell script loaded from this repo. No .exe files are downloaded.
 $Script:Repo = 'https://raw.githubusercontent.com/Amanwastaken/screensharing/main'
 $Script:Url = @{
     Services       = "$Script:Repo/Services.ps1"
@@ -28,28 +26,9 @@ $Script:Url = @{
     Doomsday       = "$Script:Repo/DoomsdayFinder.ps1"
     ShellSearch    = "$Script:Repo/ShellSearch.ps1"
     Schedules      = "$Script:Repo/SchedulesV2.ps1"
-    CommonDirs     = "$Script:Repo/CommonDirectories.ps1"
     ServiceEnabler = "$Script:Repo/Service-Enabler.ps1"
-    # NirSoft does not offer versioned downloads, so these are checked by publisher signature instead
-    WinPrefetchView  = 'https://www.nirsoft.net/utils/winprefetchview-x64.zip'
-    LastActivityView = 'https://www.nirsoft.net/utils/lastactivityview.zip'
-}
-$Script:Pinned = @{
-    # Spokwn's tools are hosted in this repo with his permission (originals: github.com/spokwn)
-    # P1AE was removed: its published exe contains a MongoDB network client that is not in its public source
-    PrefetchParser = @{ Url    = "$Script:Repo/tools/PrefetchParser.exe"
-                        Sha256 = '3A4ABD0FA4C72BB3E2FD9FBAFC6874F98DB516593CD7D4DB20F8BAAC1268B963' }
-    BamParser = @{ Url    = "$Script:Repo/tools/BAMParser.exe"
-                   Sha256 = '2E7C984E220A8EE2CAF781B945D1D58C5E7571F8F2E071517255A90E16D2398C' }
-    PathsParser = @{ Url    = "$Script:Repo/tools/PathsParser.exe"
-                     Sha256 = '2EA132306A724CD5980E635C3B4A372CF066BB1B11ED70056950A4CF058FDF79' }
-    PcaSvc = @{ Url    = "$Script:Repo/tools/PcaSvcExecuted.exe"
-                Sha256 = '09BFE7C5A26EA3E377A04FFF2DF2FDC10F04EAF00C05CD579A5DE9A080621DFC' }
-    ActivitiesCache = @{ Url    = "$Script:Repo/tools/ActivitiesCacheParser.exe"
-                         Sha256 = '293CE14B67638EBEBA8A88D475D75BF947D6EFFDC0E5B30A64691D03132CA5DD' }
-    # MIT licensed, so a copy is hosted in this repo
-    SystemInformer = @{ Url    = "$Script:Repo/tools/systeminformer-4.0.26241.138-bin.zip"
-                        Sha256 = '3E12CC4F1FFA1CC34AB9202A9DFE410724CB8B68AAF2EFA43C01D3705B27219E' }
+    PrefetchCheck  = "$Script:Repo/RedLotusPrefetchIntegrityAnalyzer.ps1"
+    BamScript      = "$Script:Repo/bamparser.ps1"
 }
 
 # Name keywords that get a file/process flagged for a closer look (case-insensitive).
@@ -308,7 +287,7 @@ function Write-Summary($v) {
         foreach ($t in $v.Top) { Write-Host ("   [{0}] {1}  ({2:P0})" -f $t.Level, $t.Text, $t.Weight) -ForegroundColor Gray }
     }
     if ($v.SecureBootOff) { Write-Host '  RULE: Secure Boot is OFF - a ban under your server rules regardless of the score.' -ForegroundColor Red }
-    Write-Host '  Not included: kernel dump [K] and the Spokwn GUI tools. Option [1] also skips the mod analyzers - [0] runs them.' -ForegroundColor DarkGray
+    Write-Host '  Option [1] skips the mod analyzers and extra scripts - [0] runs them.' -ForegroundColor DarkGray
     if (-not $v.Live) { Write-Host '  Minecraft was not running, so live process checks were skipped.' -ForegroundColor DarkGray }
     Write-Host '==================================================' -ForegroundColor Cyan
 }
@@ -982,54 +961,6 @@ function Test-Misc {
 #  EXTERNAL TOOLS
 # =====================================================================
 
-function Get-Tool([string]$Url, [string]$Name) {
-    New-Item -ItemType Directory -Path $Script:ToolDir -Force | Out-Null
-    $dest = Join-Path $Script:ToolDir $Name
-    Write-Host "Downloading $Name..." -ForegroundColor DarkGray
-    try { Invoke-WebRequest -Uri $Url -OutFile $dest -UseBasicParsing -ErrorAction Stop; return $dest }
-    catch { Write-Host "Download failed: $($_.Exception.Message)" -ForegroundColor Red; return $null }
-}
-
-# Download a pinned file and refuse it unless its SHA-256 matches the reviewed version
-function Get-PinnedTool([string]$Key) {
-    $pin  = $Script:Pinned[$Key]
-    $name = Split-Path $pin.Url -Leaf
-    $p = Get-Tool $pin.Url $name
-    if (-not $p) { return $null }
-    $hash = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash
-    if ($hash -ne $pin.Sha256) {
-        Write-Host "Not running $name - its fingerprint does not match the reviewed version. Deleting it." -ForegroundColor Red
-        Write-Host "  expected $($pin.Sha256)`n  got      $hash" -ForegroundColor DarkGray
-        Remove-Item -LiteralPath $p -Force
-        return $null
-    }
-    Write-Host "$name fingerprint OK." -ForegroundColor DarkGray
-    return $p
-}
-
-# Download a zip (NirSoft tools), extract it, and return the exe only if it is validly signed by the expected publisher
-function Get-ZipTool([string]$Url, [string]$Name, [string]$Signer) {
-    $zip = Get-Tool $Url "$Name.zip"
-    if (-not $zip) { return $null }
-    $dir = Join-Path $Script:ToolDir $Name
-    Expand-Archive -Path $zip -DestinationPath $dir -Force
-    $exe = (Get-ChildItem $dir -Filter '*.exe' -Recurse | Select-Object -First 1).FullName
-    if (-not $exe) { return $null }
-    $sig = Get-AuthenticodeSignature -LiteralPath $exe
-    if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch $Signer) {
-        Write-Host "Not running $Name - it is not validly signed by $Signer ($($sig.Status)). Deleting it." -ForegroundColor Red
-        Remove-Item -LiteralPath $dir, $zip -Recurse -Force
-        return $null
-    }
-    return $exe
-}
-
-# Console tools close their window when they finish, so run them inside cmd /k to keep the output on screen
-function Start-ConsoleTool([string]$Path) {
-    $wd = 'C:\Screenshare'; if (-not (Test-Path $wd)) { $wd = Split-Path $Path -Parent }
-    Start-Process cmd.exe -Verb RunAs -WorkingDirectory $wd -ArgumentList '/k', "`"$Path`""
-}
-
 # =====================================================================
 #  FULL SCAN - runs the extra scripts hidden, captures their output into the report
 # =====================================================================
@@ -1124,10 +1055,8 @@ function Invoke-FullScan {
     Save-Report
 
     Write-Host ''
-    $a = Read-Host '  Open Spokwn Prefetch Parser and BAM Parser for a manual look? [Y/n]'
-    if ($a -notmatch '^(n|no)$') {
-        foreach ($k in 'PrefetchParser', 'BamParser') { $p = Get-PinnedTool $k; if ($p) { Start-Process $p -Verb RunAs } }
-    }
+    $a = Read-Host '  Open the BAM report (programs run, with signatures) in the browser? [Y/n]'
+    if ($a -notmatch '^(n|no)$') { Start-RemoteScript $Script:Url.BamScript 'BAM parser (spokwn)' }
 }
 
 function Start-RemoteScript([string]$Url, [string]$Title) {
@@ -1144,30 +1073,12 @@ function Invoke-ExternalTool([string]$key) {
         'D' { Start-RemoteScript $Script:Url.Doomsday 'Doomsday Finder (lilith)' }
         'E' { Start-RemoteScript $Script:Url.ShellSearch 'ShellSearch - PowerShell event logs (lilith)' }
         'T' { Start-RemoteScript $Script:Url.Schedules 'Scheduled tasks, unsigned + suspicious (lilith)' }
-        'F' { Start-RemoteScript $Script:Url.CommonDirs 'Non-Microsoft files to C:\Screenshare\paths.txt (lilith)' }
         'N' {
             Write-Host 'This CHANGES services (sets them to Automatic and starts them). Run it only after the scan is saved.' -ForegroundColor Yellow
             if ((Read-Host '  Type YES to continue') -eq 'YES') { Start-RemoteScript $Script:Url.ServiceEnabler 'Service Enabler (lilith)' }
         }
-        'O' { $p = Get-PinnedTool 'PathsParser'; if ($p) { Start-ConsoleTool $p } }
-        'V' { $p = Get-PinnedTool 'PcaSvc'; if ($p) { Start-ConsoleTool $p } }
-        'Y' { $p = Get-PinnedTool 'ActivitiesCache'; if ($p) { Start-ConsoleTool $p } }
-        'P' { $p = Get-PinnedTool 'PrefetchParser'; if ($p) { Start-Process $p -Verb RunAs } }
-        'A' { $p = Get-PinnedTool 'BamParser'; if ($p) { Start-Process $p -Verb RunAs } }
-        'W' { $p = Get-ZipTool $Script:Url.WinPrefetchView 'WinPrefetchView' 'Nir Sofer'; if ($p) { Start-Process $p -Verb RunAs } }
-        'L' { $p = Get-ZipTool $Script:Url.LastActivityView 'LastActivityView' 'Nir Sofer'; if ($p) { Start-Process $p -Verb RunAs } }
-        'K' {
-            Write-Host 'Only take/analyze a kernel dump if you know how to read it.' -ForegroundColor Yellow
-            $zip = Get-PinnedTool 'SystemInformer'
-            if ($zip) {
-                $dir = Join-Path $Script:ToolDir 'SystemInformer'
-                Expand-Archive -Path $zip -DestinationPath $dir -Force
-                $p = Join-Path $dir 'amd64\SystemInformer.exe'
-                $sig = Get-AuthenticodeSignature -LiteralPath $p
-                if ($sig.Status -eq 'Valid' -and $sig.SignerCertificate.Subject -match 'Winsider') { Start-Process $p -Verb RunAs }
-                else { Write-Host "Not running it: SystemInformer.exe is not validly signed by Winsider ($($sig.Status)). Deleting it." -ForegroundColor Red; Remove-Item -LiteralPath $dir -Recurse -Force }
-            }
-        }
+        'P' { Start-RemoteScript $Script:Url.PrefetchCheck 'Prefetch integrity (Red Lotus)' }
+        'A' { Start-RemoteScript $Script:Url.BamScript 'BAM parser (spokwn) - opens a report in the browser' }
         'C' {
             Remove-Item $Script:ToolDir -Recurse -Force
             Write-Host 'Cleanup done: tools downloaded by Tonytheboi Auto Screenshare were removed.' -ForegroundColor Green
@@ -1215,17 +1126,10 @@ function Show-Menu {
     Write-Host '  [D]  Doomsday client finder (lilith)'
     Write-Host '  [E]  ShellSearch - suspicious PowerShell in event logs (lilith)'
     Write-Host '  [T]  Scheduled tasks, unsigned + suspicious (lilith)'
-    Write-Host '  [F]  List non-Microsoft files to C:\Screenshare\paths.txt (lilith) - feed into [O]'
-    Write-Host '  [O]  Paths Parser (spokwn) - signatures/YARA on paths.txt'
-    Write-Host '  [V]  PcaSvc executed (spokwn)'
-    Write-Host '  [Y]  ActivitiesCache parser (spokwn)'
-    Write-Host '  [P]  Prefetch Parser (spokwn) - prefetch + signatures + YARA'
-    Write-Host '  [A]  BAM parser (spokwn)'
-    Write-Host '  [W]  WinPrefetchView (NirSoft)'
-    Write-Host '  [L]  LastActivityView (NirSoft) - timeline of everything run/opened'
-    Write-Host '  [K]  System Informer, official signed build (kernel dump - experienced only)'
+    Write-Host '  [P]  Prefetch integrity check (Red Lotus)'
+    Write-Host '  [A]  BAM parser (spokwn) - programs run, opens a report in the browser'
     Write-Host '  [N]  Service Enabler - CHANGES services, run after the scan (lilith)'
-    Write-Host '  [C]  Cleanup (remove downloaded tools + Defender exclusion)'
+    Write-Host '  [C]  Cleanup (remove files left by older versions + old Defender exclusion)'
     Write-Host '  [Q]  Quit'
     Write-Host ''
 }
@@ -1254,7 +1158,7 @@ while ($true) {
     } elseif ($Script:Checks.Contains($choice)) {
         & $Script:Checks[$choice].Fn
         Save-Report
-    } elseif ('S', 'M', 'H', 'D', 'E', 'T', 'F', 'N', 'O', 'V', 'Y', 'P', 'A', 'W', 'L', 'K', 'C' -contains $choice) {
+    } elseif ('S', 'M', 'H', 'D', 'E', 'T', 'N', 'P', 'A', 'C' -contains $choice) {
         Invoke-ExternalTool $choice
     } else {
         Write-Host 'Unknown option.' -ForegroundColor Yellow
