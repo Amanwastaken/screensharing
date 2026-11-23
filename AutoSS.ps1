@@ -35,17 +35,18 @@ $Script:Url = @{
     LastActivityView = 'https://www.nirsoft.net/utils/lastactivityview.zip'
 }
 $Script:Pinned = @{
+    # Spokwn's tools are hosted in this repo with his permission (originals: github.com/spokwn)
     P1AE = @{ Url    = 'https://github.com/p1aegg/javaw/releases/download/v1.12/P1AE.Javaw.exe'
               Sha256 = 'F20057BA35DD1CBB2750E43B728FDB108A1FD3D93AED4DDFF9A7E05C0F26FB76' }
-    PrefetchParser = @{ Url    = 'https://github.com/spokwn/prefetch-parser/releases/download/v1.5.5/PrefetchParser.exe'
+    PrefetchParser = @{ Url    = "$Script:Repo/tools/PrefetchParser.exe"
                         Sha256 = '3A4ABD0FA4C72BB3E2FD9FBAFC6874F98DB516593CD7D4DB20F8BAAC1268B963' }
-    BamParser = @{ Url    = 'https://github.com/spokwn/BAM-parser/releases/download/v1.2.9/BAMParser.exe'
+    BamParser = @{ Url    = "$Script:Repo/tools/BAMParser.exe"
                    Sha256 = '2E7C984E220A8EE2CAF781B945D1D58C5E7571F8F2E071517255A90E16D2398C' }
-    PathsParser = @{ Url    = 'https://github.com/spokwn/PathsParser/releases/download/v1.2/PathsParser.exe'
+    PathsParser = @{ Url    = "$Script:Repo/tools/PathsParser.exe"
                      Sha256 = '2EA132306A724CD5980E635C3B4A372CF066BB1B11ED70056950A4CF058FDF79' }
-    PcaSvc = @{ Url    = 'https://github.com/spokwn/pcasvc-executed/releases/download/v0.8.7/PcaSvcExecuted.exe'
+    PcaSvc = @{ Url    = "$Script:Repo/tools/PcaSvcExecuted.exe"
                 Sha256 = '09BFE7C5A26EA3E377A04FFF2DF2FDC10F04EAF00C05CD579A5DE9A080621DFC' }
-    ActivitiesCache = @{ Url    = 'https://github.com/spokwn/ActivitiesCache-execution/releases/download/v0.6.5/ActivitiesCacheParser.exe'
+    ActivitiesCache = @{ Url    = "$Script:Repo/tools/ActivitiesCacheParser.exe"
                          Sha256 = '293CE14B67638EBEBA8A88D475D75BF947D6EFFDC0E5B30A64691D03132CA5DD' }
     # MIT licensed, so a copy is hosted in this repo
     SystemInformer = @{ Url    = "$Script:Repo/tools/systeminformer-4.0.26241.138-bin.zip"

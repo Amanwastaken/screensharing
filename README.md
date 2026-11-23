@@ -25,17 +25,17 @@ Choose **[1]** to run all checks. It saves an HTML report with a suspicion score
 | F | Non-Microsoft files → `C:\Screenshare\paths.txt` (lilith) | This repo | Reviewed copy |
 | N | Service Enabler (lilith). **Changes services**, asks for YES | This repo | Reviewed copy |
 | K | System Informer 4.0.26241.138 (portable, MIT) | This repo (`tools/`) | Pinned SHA-256 + must be signed by Winsider |
-| P | Spokwn Prefetch Parser v1.5.5 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
-| A | Spokwn BAM Parser v1.2.9 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
-| O | Spokwn Paths Parser v1.2 (use after F) | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
-| V | Spokwn PcaSvc Executed v0.8.7 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
-| Y | Spokwn ActivitiesCache Parser v0.6.5 | Spokwn's GitHub | Pinned SHA-256 (signed by espouken) |
+| P | Spokwn Prefetch Parser v1.5.5 | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
+| A | Spokwn BAM Parser v1.2.9 | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
+| O | Spokwn Paths Parser v1.2 (use after F) | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
+| V | Spokwn PcaSvc Executed v0.8.7 | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
+| Y | Spokwn ActivitiesCache Parser v0.6.5 | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
 | J | P1AE javaw memory scanner v1.12 | p1aegg's GitHub | Pinned SHA-256 (open source, unsigned) |
 | W / L | NirSoft WinPrefetchView / LastActivityView | nirsoft.net | Must be validly signed by Nir Sofer |
 | C | Cleanup | | Removes downloaded tools from `%ProgramData%\TonytheboiAutoSS` |
 
 Downloaded programs are refused and deleted if the fingerprint or signature doesn't match, so a file swapped upstream can't run.
-Spokwn's and P1AE's programs have no licence that allows re-hosting, so they are fetched from the author at a locked version instead of being copied here.
+Spokwn's tools are hosted here with his permission. P1AE has no licence that allows re-hosting, so it is fetched from the author at a locked version.
 
 Not included on purpose: Lily's Collector (adds a Defender exclusion), IHateScreensharing (rewrites system settings), Spokwn-Collect (unpinned bulk downloads), and Spokwn's unsigned tools (JournalTrace, BamDeletedKeys, KernelLiveDumpTool, espouken.exe).
 
@@ -95,6 +95,7 @@ iex ([Text.Encoding]::UTF8.GetString((iwr URL -UseBasicParsing).RawContentStream
 | AutoSS.ps1 | tonytheboi/Tonytheboi-Auto-SS-Tool@cc60349 (modified: repo-hosted scripts, pinned downloads, added [H]) |
 | YarpsModAnalyzer.ps1 | YarpLetapStan/PowershellScripts@66fd1d7 (YarpsModAnalyzer6.0.ps1) |
 | Services.ps1, DoomsdayFinder.ps1, ShellSearch.ps1, SchedulesV2.ps1, CommonDirectories.ps1, Service-Enabler.ps1 | praiselily/lilith-ps@ecf7280 |
+| tools/PrefetchParser.exe, BAMParser.exe, PathsParser.exe, PcaSvcExecuted.exe, ActivitiesCacheParser.exe | spokwn releases v1.5.5, v1.2.9, v1.2, v0.8.7, v0.6.5 (hosted with permission) |
 | tools/systeminformer-4.0.26241.138-bin.zip | winsiderss/systeminformer release v4.0.26241.138 (MIT) |
 | RedLotusPrefetchIntegrityAnalyzer.ps1 | bacanoicua/Screenshare@e212b72 |
 | bamparser.ps1, Streams.ps1 | spokwn/powershells@544b5f4 |
