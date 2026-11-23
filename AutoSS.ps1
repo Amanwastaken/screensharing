@@ -35,8 +35,8 @@ $Script:Url = @{
     LastActivityView = 'https://www.nirsoft.net/utils/lastactivityview.zip'
 }
 $Script:Pinned = @{
-    # Spokwn's tools are hosted in this repo with his permission (originals: github.com/spokwn)
-    P1AE = @{ Url    = 'https://github.com/p1aegg/javaw/releases/download/v1.12/P1AE.Javaw.exe'
+    # Spokwn's and p1aegg's tools are hosted in this repo with their permission (originals: github.com/spokwn, github.com/p1aegg/javaw)
+    P1AE = @{ Url    = "$Script:Repo/tools/P1AE.Javaw.exe"
               Sha256 = 'F20057BA35DD1CBB2750E43B728FDB108A1FD3D93AED4DDFF9A7E05C0F26FB76' }
     PrefetchParser = @{ Url    = "$Script:Repo/tools/PrefetchParser.exe"
                         Sha256 = '3A4ABD0FA4C72BB3E2FD9FBAFC6874F98DB516593CD7D4DB20F8BAAC1268B963' }
