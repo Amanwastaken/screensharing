@@ -30,14 +30,13 @@ Choose **[1]** to run all checks. It saves an HTML report with a suspicion score
 | O | Spokwn Paths Parser v1.2 (use after F) | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
 | V | Spokwn PcaSvc Executed v0.8.7 | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
 | Y | Spokwn ActivitiesCache Parser v0.6.5 | This repo (`tools/`) | Pinned SHA-256 (signed by espouken) |
-| J | P1AE javaw memory scanner v1.12 | This repo (`tools/`) | Pinned SHA-256 (open source, unsigned) |
 | W / L | NirSoft WinPrefetchView / LastActivityView | nirsoft.net | Must be validly signed by Nir Sofer |
 | C | Cleanup | | Removes downloaded tools from `%ProgramData%\TonytheboiAutoSS` |
 
 Downloaded programs are refused and deleted if the fingerprint or signature doesn't match, so a file swapped upstream can't run.
-Spokwn's tools and P1AE are hosted here with their authors' permission.
+Spokwn's tools are hosted here with his permission.
 
-Not included on purpose: Lily's Collector (adds a Defender exclusion), IHateScreensharing (rewrites system settings), Spokwn-Collect (unpinned bulk downloads), and Spokwn's unsigned tools (JournalTrace, BamDeletedKeys, KernelLiveDumpTool, espouken.exe).
+Not included on purpose: **P1AE javaw scanner** (the published exe contains a MongoDB network client that isn't in its public source code, so what it sends can't be verified), Lily's Collector (adds a Defender exclusion), IHateScreensharing (rewrites system settings), Spokwn-Collect (unpinned bulk downloads), and Spokwn's unsigned tools (JournalTrace, BamDeletedKeys, KernelLiveDumpTool, espouken.exe).
 
 ## Individual scripts
 
@@ -96,7 +95,6 @@ iex ([Text.Encoding]::UTF8.GetString((iwr URL -UseBasicParsing).RawContentStream
 | YarpsModAnalyzer.ps1 | YarpLetapStan/PowershellScripts@66fd1d7 (YarpsModAnalyzer6.0.ps1) |
 | Services.ps1, DoomsdayFinder.ps1, ShellSearch.ps1, SchedulesV2.ps1, CommonDirectories.ps1, Service-Enabler.ps1 | praiselily/lilith-ps@ecf7280 |
 | tools/PrefetchParser.exe, BAMParser.exe, PathsParser.exe, PcaSvcExecuted.exe, ActivitiesCacheParser.exe | spokwn releases v1.5.5, v1.2.9, v1.2, v0.8.7, v0.6.5 (hosted with permission) |
-| tools/P1AE.Javaw.exe | p1aegg/javaw release v1.12 (hosted with permission) |
 | tools/systeminformer-4.0.26241.138-bin.zip | winsiderss/systeminformer release v4.0.26241.138 (MIT) |
 | RedLotusPrefetchIntegrityAnalyzer.ps1 | bacanoicua/Screenshare@e212b72 |
 | bamparser.ps1, Streams.ps1 | spokwn/powershells@544b5f4 |
@@ -104,6 +102,8 @@ iex ([Text.Encoding]::UTF8.GetString((iwr URL -UseBasicParsing).RawContentStream
 | SuspiciousScheduler.ps1 | nolww/project-mohr@1a7df47 |
 
 ## Notes
+
+- Every program in `tools/` was checked: Spokwn's tools import no `socket`/`connect` functions, so they can't make network connections; their embedded `replaceparser.exe` helper is a read-only USN journal scanner; System Informer is signed by Winsider and its driver by Microsoft.
 
 - AutoSS treats Secure Boot being off as an automatic ban "under your server rules". That's the original author's rule; ignore it if it isn't yours.
 - Results are heuristics. A flag (duplicate prefetch hash, cmd/powershell scheduled task, common cheat word in a mod) is a lead to check, not proof.

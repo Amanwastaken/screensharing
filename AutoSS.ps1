@@ -35,9 +35,8 @@ $Script:Url = @{
     LastActivityView = 'https://www.nirsoft.net/utils/lastactivityview.zip'
 }
 $Script:Pinned = @{
-    # Spokwn's and p1aegg's tools are hosted in this repo with their permission (originals: github.com/spokwn, github.com/p1aegg/javaw)
-    P1AE = @{ Url    = "$Script:Repo/tools/P1AE.Javaw.exe"
-              Sha256 = 'F20057BA35DD1CBB2750E43B728FDB108A1FD3D93AED4DDFF9A7E05C0F26FB76' }
+    # Spokwn's tools are hosted in this repo with his permission (originals: github.com/spokwn)
+    # P1AE was removed: its published exe contains a MongoDB network client that is not in its public source
     PrefetchParser = @{ Url    = "$Script:Repo/tools/PrefetchParser.exe"
                         Sha256 = '3A4ABD0FA4C72BB3E2FD9FBAFC6874F98DB516593CD7D4DB20F8BAAC1268B963' }
     BamParser = @{ Url    = "$Script:Repo/tools/BAMParser.exe"
@@ -303,7 +302,7 @@ function Write-Summary($v) {
         foreach ($t in $v.Top) { Write-Host ("   [{0}] {1}  ({2:P0})" -f $t.Level, $t.Text, $t.Weight) -ForegroundColor Gray }
     }
     if ($v.SecureBootOff) { Write-Host '  RULE: Secure Boot is OFF - a ban under your server rules regardless of the score.' -ForegroundColor Red }
-    Write-Host '  Not included: memory scan [J], mod analyzer [M], kernel dump. Run those and weigh them yourself.' -ForegroundColor DarkGray
+    Write-Host '  Not included: mod analyzers [M]/[H], kernel dump [K]. Run those and weigh them yourself.' -ForegroundColor DarkGray
     if (-not $v.Live) { Write-Host '  Minecraft was not running, so live process checks were skipped.' -ForegroundColor DarkGray }
     Write-Host '==================================================' -ForegroundColor Cyan
 }
@@ -341,7 +340,7 @@ $(if ($v.SecureBootOff) { "<div class='verdict FLAG'><b>Rule: Secure Boot is OFF
 <div class="meta">Cheat-evidence findings: $($v.Cheat) &middot; Cleanup-evidence findings: $($v.Cleanup)$(if (-not $v.Live) { ' &middot; Minecraft was not running, live checks skipped' })</div>
 <h2>Summary - top reasons</h2>
 $(if ($v.Top) { ($v.Top | ForEach-Object { "<div class='item'><span class='lvl $($_.Level)'>$($_.Level)</span>$(E $_.Text) <span class='meta'>($(E $_.Section), weight $([int]($_.Weight*100))%)</span></div>" }) -join "`n" } else { "<div class='item OK'>No red flags or warnings.</div>" })
-<div class="meta" style="margin-top:10px">The score is a weighted sum of the automated checks, not a measured probability. It does not include the memory scan, mod analyzer or kernel dump - run those and weigh them yourself. Never ban on the number alone: check the reasons.</div>
+<div class="meta" style="margin-top:10px">The score is a weighted sum of the automated checks, not a measured probability. It does not include the mod analyzers or kernel dump - run those and weigh them yourself. Never ban on the number alone: check the reasons.</div>
 <div class="meta">FLAG = strong red flag. WARN = look closer / ask the player. A single WARN is a lead, not a verdict.</div>
 "@)
     foreach ($s in $Script:Report) {
@@ -1047,10 +1046,6 @@ function Invoke-ExternalTool([string]$key) {
         'O' { $p = Get-PinnedTool 'PathsParser'; if ($p) { Start-ConsoleTool $p } }
         'V' { $p = Get-PinnedTool 'PcaSvc'; if ($p) { Start-ConsoleTool $p } }
         'Y' { $p = Get-PinnedTool 'ActivitiesCache'; if ($p) { Start-ConsoleTool $p } }
-        'J' {
-            if (-not (Get-Process javaw)) { Write-Host 'Minecraft (javaw) is not running - the memory scan needs the game open.' -ForegroundColor Yellow }
-            $p = Get-PinnedTool 'P1AE'; if ($p) { Start-Process $p -Verb RunAs }
-        }
         'P' { $p = Get-PinnedTool 'PrefetchParser'; if ($p) { Start-Process $p -Verb RunAs } }
         'A' { $p = Get-PinnedTool 'BamParser'; if ($p) { Start-Process $p -Verb RunAs } }
         'W' { $p = Get-ZipTool $Script:Url.WinPrefetchView 'WinPrefetchView' 'Nir Sofer'; if ($p) { Start-Process $p -Verb RunAs } }
@@ -1117,7 +1112,6 @@ function Show-Menu {
     Write-Host '  [O]  Paths Parser (spokwn) - signatures/YARA on paths.txt'
     Write-Host '  [V]  PcaSvc executed (spokwn)'
     Write-Host '  [Y]  ActivitiesCache parser (spokwn)'
-    Write-Host '  [J]  P1AE javaw memory scanner (game must be open)'
     Write-Host '  [P]  Prefetch Parser (spokwn) - prefetch + signatures + YARA'
     Write-Host '  [A]  BAM parser (spokwn)'
     Write-Host '  [W]  WinPrefetchView (NirSoft)'
@@ -1147,11 +1141,11 @@ while ($true) {
         foreach ($k in $Script:Checks.Keys) { & $Script:Checks[$k].Fn }
         Save-Report
         Write-Host ''
-        Write-Host 'Next: run [J] memory scan and [M] mod analyzer, then go through the report.' -ForegroundColor Cyan
+        Write-Host 'Next: run [M] or [H] mod analyzer, then go through the report.' -ForegroundColor Cyan
     } elseif ($Script:Checks.Contains($choice)) {
         & $Script:Checks[$choice].Fn
         Save-Report
-    } elseif ('S', 'M', 'H', 'D', 'E', 'T', 'F', 'N', 'O', 'V', 'Y', 'J', 'P', 'A', 'W', 'L', 'K', 'C' -contains $choice) {
+    } elseif ('S', 'M', 'H', 'D', 'E', 'T', 'F', 'N', 'O', 'V', 'Y', 'P', 'A', 'W', 'L', 'K', 'C' -contains $choice) {
         Invoke-ExternalTool $choice
     } else {
         Write-Host 'Unknown option.' -ForegroundColor Yellow
